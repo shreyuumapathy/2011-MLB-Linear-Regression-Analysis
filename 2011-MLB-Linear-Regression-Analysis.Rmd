@@ -1,0 +1,102 @@
+
+---
+title: "MLB11 Linear Regression Analysis"
+author: Shreyu Umapathy
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(dplyr)
+mlb11 <- read.csv("mlb11.csv")
+```
+
+## Batting average vs Runs
+
+```{r batavg_model}
+ggplot(mlb11, aes(x = bat_avg, y = runs)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(title = "Runs vs Batting Average", x = "Batting Average", y = "Runs")
+
+batavg_model <- lm(runs ~ bat_avg, data = mlb11)
+summary(batavg_model)
+```
+
+The scatterplot shows a positive linear relationship between batting average and runs. The linear model confirms this with a positive slope and high R².
+
+## Compared to at_bats
+
+```{r atbats_model}
+atbats_model <- lm(runs ~ at_bats, data = mlb11)
+summary(atbats_model)
+```
+
+Comparing R² values:
+
+- **Batting average model R²**: `r round(summary(batavg_model)$r.squared, 3)`
+- **At-bats model R²**: `r round(summary(atbats_model)$r.squared, 3)`
+
+Batting average has a higher R², meaning it predicts runs better than at_bats.
+
+## All traditional variables
+
+```{r traditional_compare}
+traditional_vars <- c("at_bats", "hits", "homeruns", "bat_avg", "rbi")
+results <- data.frame(Variable = traditional_vars, R2 = NA)
+
+for (i in seq_along(traditional_vars)) {
+  var <- traditional_vars[i]
+  model <- lm(as.formula(paste("runs ~", var)), data = mlb11)
+  results$R2[i] <- summary(model)$r.squared
+}
+
+results <- results %>% arrange(desc(R2))
+results
+```
+
+```{r best_traditional_plot}
+best_trad_var <- results$Variable[1]
+ggplot(mlb11, aes_string(x = best_trad_var, y = "runs")) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(title = paste("Runs vs", best_trad_var), x = best_trad_var, y = "Runs")
+```
+
+The best traditional predictor is `r results$Variable[1]`, based on the highest R² value.
+
+## Moneyball variables
+
+```{r moneyball_compare}
+moneyball_vars <- c("obp", "slg", "ops")
+moneyball_results <- data.frame(Variable = moneyball_vars, R2 = NA)
+
+for (i in seq_along(moneyball_vars)) {
+  var <- moneyball_vars[i]
+  model <- lm(as.formula(paste("runs ~", var)), data = mlb11)
+  moneyball_results$R2[i] <- summary(model)$r.squared
+}
+
+moneyball_results <- moneyball_results %>% arrange(desc(R2))
+moneyball_results
+```
+
+```{r best_moneyball_plot}
+best_moneyball_var <- moneyball_results$Variable[1]
+ggplot(mlb11, aes_string(x = best_moneyball_var, y = "runs")) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(title = paste("Runs vs", best_moneyball_var), x = best_moneyball_var, y = "Runs")
+```
+
+The Moneyball variables mostly outperform traditional variables. `r moneyball_results$Variable[1]` has the highest R² and is the best predictor of runs.
+
+## Model diagnostics
+
+```{r diagnostics}
+best_model <- lm(as.formula(paste("runs ~", best_moneyball_var)), data = mlb11)
+par(mfrow = c(2, 2))
+plot(best_model)
+```
+
+Model diagnostics for `r best_moneyball_var` show residuals are not too far off the line of best fit, This supports its validity as a strong linear predictor of runs.
